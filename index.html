@@ -1,57 +1,169 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
 <title>Min X</title>
-<style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{
-    background:#0a0a0a;color:#fff;
-    font-family:system-ui,sans-serif;
-    min-height:100vh;
-    display:flex;flex-direction:column;
-    align-items:center;justify-content:center;
-    padding:24px;text-align:center;
-  }
-  .logo{
-    width:140px;height:140px;
-    border-radius:34px;
-    background:linear-gradient(145deg,#f5c542,#a37a1a);
-    display:flex;align-items:center;justify-content:center;
-    font-size:56px;font-weight:900;color:#000;
-    letter-spacing:-3px;
-    box-shadow:0 0 80px rgba(245,197,66,.55);
-    animation:pulse 2.5s infinite;
-  }
-  @keyframes pulse{
-    0%,100%{transform:scale(1);box-shadow:0 0 80px rgba(245,197,66,.55)}
-    50%{transform:scale(1.06);box-shadow:0 0 120px rgba(245,197,66,.85)}
-  }
-  h1{
-    font-size:44px;font-weight:900;margin-top:28px;
-    background:linear-gradient(90deg,#f5c542,#fff,#f5c542);
-    -webkit-background-clip:text;background-clip:text;
-    color:transparent;
-  }
-  p{color:#8a8a8a;margin-top:12px;font-size:16px;line-height:1.7;max-width:320px}
-  .badge{
-    margin-top:28px;padding:8px 20px;
-    background:#161616;border:1px solid #262626;
-    border-radius:30px;font-size:13px;color:#f5c542;
-    font-weight:700;
-  }
-  .hint{
-    position:fixed;bottom:24px;left:24px;right:24px;
-    color:#555;font-size:12px;
-  }
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
+<div id="splash">
   <div class="logo">MX</div>
   <h1>Min X</h1>
-  <p>منصة التعدين والمكافآت</p>
-  <div class="badge">🚀 النسخة التجريبية</div>
-  <div class="hint">التطبيق يعمل الآن — جاهز للتثبيت</div>
+</div>
+
+<div id="toasts"></div>
+
+<div id="authScreen" class="auth-wrap hide">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo" style="width:64px;height:64px;font-size:26px;border-radius:18px">MX</div>
+      <div class="title-gold">Min X</div>
+      <div class="muted">منصة المكافآت والتعدين</div>
+    </div>
+    <div class="tabs">
+      <button id="tabLogin" class="active" onclick="switchAuth('login')">دخول</button>
+      <button id="tabSignup" onclick="switchAuth('signup')">تسجيل جديد</button>
+    </div>
+    <div id="formLogin">
+      <div class="field"><label>البريد الإلكتروني</label><input id="loginEmail" type="email" placeholder="you@example.com"></div>
+      <div class="field"><label>كلمة المرور</label><input id="loginPass" type="password" placeholder="••••••••"></div>
+      <button class="btn primary" onclick="doLogin()" id="btnLogin">تسجيل الدخول</button>
+    </div>
+    <div id="formSignup" class="hide">
+      <div class="field"><label>اسم المستخدم</label><input id="suUser" placeholder="username"></div>
+      <div class="field"><label>البريد الإلكتروني</label><input id="suEmail" type="email"></div>
+      <div class="field"><label>كلمة المرور</label><input id="suPass" type="password" placeholder="6+"></div>
+      <div class="field"><label>كود الإحالة (اختياري)</label><input id="suRef"></div>
+      <button class="btn primary" onclick="doSignup()" id="btnSignup">إنشاء حساب</button>
+    </div>
+  </div>
+</div>
+
+<div id="app" class="hide">
+  <div class="topbar">
+    <div class="logo-mini">MX</div>
+    <h1>Min X</h1>
+    <div class="bal" id="topBalance">$0.00</div>
+  </div>
+
+  <section id="page-mining" class="page active">
+    <div class="bal-box">
+      <div class="bal-val" id="balanceValue">0.00</div>
+      <div class="bal-lbl">رصيدك الحالي (USD)</div>
+      <div class="speed-tag" id="speedTag">السرعة 1 — $0.10/نقرة</div>
+    </div>
+    <div class="mine-area">
+      <button class="mine-btn" id="mineBtn" onclick="claimMining()">
+        <span class="mx">MX</span>
+        <span class="lbl" id="mineBtnLabel">اضغط للتعدين</span>
+        <span class="val" id="mineBtnVal">+$0.10</span>
+      </button>
+    </div>
+    <div class="card">
+      <div class="card-row">
+        <div class="card-title" style="margin:0">الحد اليومي</div>
+        <div id="dailyLabel" class="gold-bold">$0 / $1.00</div>
+      </div>
+      <div class="bar"><i id="dailyBar" style="width:0%"></i></div>
+      <div class="muted center" style="margin-top:10px" id="remainingLabel">متبقٍ: 10 نقرات</div>
+    </div>
+    <div class="grid3">
+      <div class="stat"><div class="v" id="todayEarned">$0</div><div class="k">أرباح اليوم</div></div>
+      <div class="stat"><div class="v" id="todayClicks">0</div><div class="k">نقرات اليوم</div></div>
+      <div class="stat"><div class="v" id="totalClicks">0</div><div class="k">إجمالي النقرات</div></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-title">آخر العمليات</div>
+      <div id="recentTx"><div class="empty">لا توجد عمليات</div></div>
+    </div>
+  </section>
+
+  <section id="page-speed" class="page">
+    <h2 class="page-title">مستويات السرعة</h2>
+    <div class="muted" style="margin-bottom:14px">15 مستوى — كل مستوى يفتح بعد إيداع معتمد</div>
+    <div class="card" style="padding:14px">
+      <div class="card-row">
+        <span class="muted">إجمالي الإيداعات المعتمدة</span>
+        <strong class="gold" id="approvedDeposits">$0.00</strong>
+      </div>
+    </div>
+    <div id="packagesList"></div>
+  </section>
+
+  <section id="page-ref" class="page">
+    <h2 class="page-title">الإحالات</h2>
+    <div class="card">
+      <div class="card-title">كود الإحالة</div>
+      <div class="ref-code" id="refCode">----</div>
+      <div class="ref-link">
+        <input id="refLink" readonly>
+        <button class="btn primary btn-sm" onclick="copyRef()">نسخ</button>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="stat"><div class="v" id="refCount">0</div><div class="k">مدعوّون</div></div>
+      <div class="stat"><div class="v" id="refEarned">$0</div><div class="k">مكافآت</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">سجل الإحالات</div>
+      <div id="refList"><div class="empty">لا توجد إحالات</div></div>
+    </div>
+  </section>
+
+  <section id="page-profile" class="page">
+    <div class="card center">
+      <div class="avatar" id="avatarEl">MX</div>
+      <div class="profile-name" id="profileName">-</div>
+      <div class="muted" id="profileEmail" style="direction:ltr">-</div>
+      <div class="ref-code" style="margin-top:14px;font-size:15px" id="profileRef">----</div>
+    </div>
+    <div class="grid2" style="margin-bottom:14px">
+      <div class="stat"><div class="v" id="pBalance">$0</div><div class="k">الرصيد</div></div>
+      <div class="stat"><div class="v" id="pLocked">$0</div><div class="k">معلّق</div></div>
+    </div>
+    <div class="grid3" style="margin-bottom:14px">
+      <div class="stat"><div class="v" id="pSpeed">1</div><div class="k">السرعة</div></div>
+      <div class="stat"><div class="v" id="pClicks">0</div><div class="k">نقرات</div></div>
+      <div class="stat"><div class="v" id="pAge">0</div><div class="k">العمر (يوم)</div></div>
+    </div>
+    <div class="grid2" style="margin-bottom:14px">
+      <button class="btn primary" onclick="openDeposit()">إيداع</button>
+      <button class="btn ghost" onclick="openWithdraw()">سحب</button>
+    </div>
+    <div class="card">
+      <div class="card-title">سجل العمليات</div>
+      <div id="txList"><div class="empty">لا توجد عمليات</div></div>
+    </div>
+    <div class="card">
+      <button class="btn danger" onclick="doLogout()">تسجيل الخروج</button>
+    </div>
+    <div id="adminCard" class="card hide">
+      <div class="card-title">لوحة الإدارة</div>
+      <button class="btn primary" onclick="openAdmin()">فتح لوحة التحكم</button>
+    </div>
+  </section>
+
+  <nav class="nav">
+    <button class="nav-btn active" data-page="mining" onclick="nav('mining')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2"/></svg><span>تعدين</span></button>
+    <button class="nav-btn" data-page="speed" onclick="nav('speed')"><svg viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg><span>السرعة</span></button>
+    <button class="nav-btn" data-page="ref" onclick="nav('ref')"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span>إحالات</span></button>
+    <button class="nav-btn" data-page="profile" onclick="nav('profile')"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>حسابي</span></button>
+  </nav>
+</div>
+
+<div id="modal" class="hide">
+  <div id="modal-inner">
+    <div class="handle"></div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
 </body>
-</html>
+ </html>
